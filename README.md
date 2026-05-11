@@ -1,71 +1,57 @@
+<div align="center">
+
 # letitbe-router
 
-**Letitbe Router** is a local-first routing layer for AI agents and model CLIs.
+**Flow-safe routing for AI agents and model CLIs**<br />
+**AI 에이전트와 모델 CLI를 리밋에 막히지 않게 흘려보내는 로컬 라우터**
 
-It combines:
+<br />
 
-- **semantic intent routing** from [`aurelio-labs/semantic-router`](https://github.com/aurelio-labs/semantic-router)
-- **simple local router UX and fallback patterns** inspired by [`decolua/9router`](https://github.com/decolua/9router)
-- **adaptive usage/limit signals** inspired by [`robinebers/openusage`](https://github.com/robinebers/openusage)
+<a href="README.ko.md"><b>한국어로 보기</b></a>
+&nbsp;&nbsp;·&nbsp;&nbsp;
+<a href="README.en.md"><b>Read in English</b></a>
 
-The goal is to keep work flowing across Codex CLI, Gemini CLI, and Claude Code CLI without exhausting any single model, provider, or account window.
+<br /><br />
 
-> Status: design-first MVP. The repository currently defines architecture and implementation scope before code is added.
+<a href="docs/architecture.md">Architecture</a>
+&nbsp;·&nbsp;
+<a href="docs/mvp.md">MVP</a>
+&nbsp;·&nbsp;
+<a href="docs/usage-model.md">Usage Model</a>
+&nbsp;·&nbsp;
+<a href="docs/references.md">References</a>
 
-## Why
+<br /><br />
 
-AI coding/research/review workflows often hit uneven limits:
+<img alt="status: design-first" src="https://img.shields.io/badge/status-design--first-7c3aed" />
+<img alt="license: MIT" src="https://img.shields.io/badge/license-MIT-111827" />
+<img alt="local-first" src="https://img.shields.io/badge/local--first-yes-10b981" />
 
-- one model gets exhausted while others remain available
-- provider quotas reset on different windows
-- CLIs expose different credential and usage surfaces
-- semantic routing and limit-aware scheduling are usually handled separately
+</div>
 
-Letitbe Router treats routing as two related decisions:
+---
 
-1. **What kind of work is this?**
-2. **Which available agent should take it right now?**
+## Quick language select
 
-## Planned CLI
+| Language | Start here | Summary |
+| --- | --- | --- |
+| 한국어 | [README.ko.md](README.ko.md) | 레리삐 라우터의 비전, MVP, CLI 흐름을 한국어로 봅니다. |
+| English | [README.en.md](README.en.md) | Read the project overview, architecture links, and MVP scope in English. |
 
-```bash
-lr route "fix the failing pytest and update the code"
-lr usage
-lr status
-lr decide "review this architecture for risks"
-lr smoke
-```
+## What is this?
 
-Future executor mode:
+Letitbe Router is a local-first routing layer that combines semantic intent routing with adaptive usage-aware scheduling.
 
-```bash
-lr run "compare these docs and summarize the tradeoffs"
-```
+It is designed to route work across Codex CLI, Gemini CLI, and Claude Code CLI while avoiding overloading any single provider or limit window.
 
-## Design principles
+## Reading order
 
-- **Wrapper, not fork:** use `semantic-router` through a narrow adapter boundary.
-- **Stable domain model:** expose Letitbe Router DTOs, not upstream internals.
-- **Observable over magical:** usage limits are measured or estimated with confidence labels.
-- **Local-first:** default state lives under the user home directory.
-- **CLI-first:** no heavy dashboard, MITM, or process-killing behavior in the MVP.
-- **Safe fallback:** cooldown and fallback should degrade gracefully when a provider is unavailable.
+1. [한국어 소개](README.ko.md) or [English overview](README.en.md)
+2. [Architecture](docs/architecture.md)
+3. [MVP Plan](docs/mvp.md)
+4. [Usage and Limit Model](docs/usage-model.md)
+5. [Reference Repository Notes](docs/references.md)
 
-## Reference docs
+## Current status
 
-- [Architecture](docs/architecture.md)
-- [MVP Plan](docs/mvp.md)
-- [Usage and Limit Model](docs/usage-model.md)
-- [Reference Repository Notes](docs/references.md)
-
-## Initial target agents
-
-- Codex CLI
-- Gemini CLI
-- Claude Code CLI
-
-## License
-
-MIT. See [LICENSE](LICENSE).
-
-This project depends on or learns from MIT-licensed upstream projects. See [docs/references.md](docs/references.md) for attribution notes.
+Design-first MVP. The repository currently defines the architecture and implementation scope before code is added.
