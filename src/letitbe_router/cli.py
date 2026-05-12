@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shlex
+import urllib.error
+import urllib.request
 
 from letitbe_router import __version__
 from letitbe_router.adapters import list_adapters, render_adapter
@@ -18,6 +21,7 @@ from letitbe_router.config import (
 )
 from letitbe_router.executor import Executor, build_command
 from letitbe_router.router import LetitbeRouter
+from letitbe_router.server import serve
 
 SMOKE_CASES = (
     "please fix the failing pytest and update the code",
@@ -64,6 +68,30 @@ def main(argv: list[str] | None = None) -> int:
 
     subparsers.add_parser("smoke", help="run deterministic offline routing smoke test")
 
+    serve_parser = subparsers.add_parser(
+        "serve", help="run OpenAI-compatible HTTP API server"
+    )
+    serve_parser.add_argument("--host", default="127.0.0.1", help="bind host")
+    serve_parser.add_argument("--port", type=_positive_int, default=20128, help="bind port")
+    serve_parser.add_argument(
+        "--timeout",
+        type=_positive_int,
+        default=120,
+        help="agent execution timeout in seconds",
+    )
+    serve_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="return selected command without executing agents",
+    )
+
+    status_parser = subparsers.add_parser("status", help="check OpenAI API server health")
+    status_parser.add_argument(
+        "--base-url",
+        default="http://127.0.0.1:20128",
+        help="server base URL",
+    )
+
     config_parser = subparsers.add_parser("config", help="inspect letitbe-router config")
     config_subparsers = config_parser.add_subparsers(dest="config_command")
     config_subparsers.add_parser("path", help="print config path")
@@ -94,6 +122,13 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "adapter":
         return _handle_adapter(args, parser)
+
+    if args.command == "serve":
+        serve(host=args.host, port=args.port, timeout_seconds=args.timeout, dry_run=args.dry_run)
+        return 0
+
+    if args.command == "status":
+        return _handle_status(args.base_url)
 
     try:
         agents = _available_agents()
@@ -220,6 +255,21 @@ def _handle_adapter(args, parser: argparse.ArgumentParser) -> int:
             return 2
         return 0
     return 2
+
+
+def _handle_status(base_url: str) -> int:
+    url = base_url.rstrip("/") + "/health"
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (OSError, json.JSONDecodeError, urllib.error.URLError) as exc:
+        print("status: unavailable")
+        print(f"error: {exc}")
+        return 2
+    print(f"status: {payload.get('status', 'unknown')}")
+    print(f"version: {payload.get('version', '-')}")
+    print(f"url: {base_url.rstrip('/')}")
+    return 0
 
 
 def _add_execution_options(parser: argparse.ArgumentParser) -> None:

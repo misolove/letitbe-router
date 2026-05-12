@@ -279,6 +279,19 @@ lr adapter render hermes
 
 JSON config에서 `hermes-agent`, `opencode`, `openclaw`, `codex-cli`, `claude-code`, `gemini-cli` agent template을 켜거나 수정할 수 있습니다. 비활성 template은 나중에 필요할 때 opt-in하기 위한 자리만 만들어둔 것이며, `lr adapter render ...`는 dry-run snippet만 출력합니다.
 
+`lr serve`는 custom base URL을 지정할 수 있는 도구에서 사용할 수 있도록 최소 OpenAI-compatible API를 노출합니다.
+
+```bash
+lr serve --host 127.0.0.1 --port 20128 --timeout 120
+lr status --base-url http://127.0.0.1:20128
+curl http://127.0.0.1:20128/v1/models
+curl http://127.0.0.1:20128/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{"model":"agent/claude-code","messages":[{"role":"user","content":"Reply exactly: LTR_OK"}]}'
+```
+
+현재 지원 범위는 `GET /health`, `GET /v1/models`, non-streaming `POST /v1/chat/completions`입니다. `stream=true`는 streaming 구현 전까지 의도적으로 거절합니다.
+
 ## 라이선스
 
 MIT. 자세한 내용은 [LICENSE](LICENSE)를 참고하세요.
