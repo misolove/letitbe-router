@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import shlex
+import sys
 import urllib.error
 import urllib.request
 
@@ -19,9 +20,11 @@ from letitbe_router.config import (
     sample_config_json,
     write_sample_config,
 )
+from letitbe_router.daemon import render_daemon_status, start_daemon, stop_daemon
 from letitbe_router.executor import Executor, build_command
 from letitbe_router.router import LetitbeRouter
 from letitbe_router.server import serve
+from letitbe_router.tui import render_tui_menu
 
 SMOKE_CASES = (
     "please fix the failing pytest and update the code",
@@ -92,6 +95,30 @@ def main(argv: list[str] | None = None) -> int:
         help="server base URL",
     )
 
+    tui_parser = subparsers.add_parser("tui", help="show 9router-style terminal menu")
+    tui_parser.add_argument(
+        "--base-url",
+        default="http://localhost:20128",
+        help="server base URL shown in the menu",
+    )
+    tui_parser.add_argument("--once", action="store_true", help="render menu once and exit")
+
+    daemon_parser = subparsers.add_parser("daemon", help="manage background API server")
+    daemon_subparsers = daemon_parser.add_subparsers(dest="daemon_command")
+    daemon_start = daemon_subparsers.add_parser("start", help="start background API server")
+    daemon_start.add_argument("--host", default="127.0.0.1", help="bind host")
+    daemon_start.add_argument("--port", type=_positive_int, default=20128, help="bind port")
+    daemon_start.add_argument("--timeout", type=_positive_int, default=120, help="agent timeout")
+    daemon_start.add_argument("--dry-run", action="store_true", help="dry-run agent execution")
+    daemon_stop = daemon_subparsers.add_parser("stop", help="stop background API server")
+    daemon_stop.set_defaults(_daemon_stop=True)
+    daemon_status = daemon_subparsers.add_parser("status", help="show background API server status")
+    daemon_status.add_argument(
+        "--base-url",
+        default="http://127.0.0.1:20128",
+        help="server base URL",
+    )
+
     config_parser = subparsers.add_parser("config", help="inspect letitbe-router config")
     config_subparsers = config_parser.add_subparsers(dest="config_command")
     config_subparsers.add_parser("path", help="print config path")
@@ -129,6 +156,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "status":
         return _handle_status(args.base_url)
+
+    if args.command == "tui":
+        return _handle_tui(args.base_url, once=args.once)
+
+    if args.command == "daemon":
+        return _handle_daemon(args)
 
     try:
         agents = _available_agents()
@@ -270,6 +303,68 @@ def _handle_status(base_url: str) -> int:
     print(f"version: {payload.get('version', '-')}")
     print(f"url: {base_url.rstrip('/')}")
     return 0
+
+
+def _handle_tui(base_url: str, *, once: bool = False) -> int:
+    print(render_tui_menu(base_url=base_url), end="")
+    if once or not sys.stdin.isatty():
+        return 0
+    while True:
+        choice = input("Select [1=status, 2=terminal, 3=background, 4=exit]: ").strip()
+        if choice == "1":
+            _handle_status(base_url)
+        elif choice == "2":
+            print("Terminal UI shell is not expanded yet; use lr chat/run directly.")
+        elif choice == "3":
+            host_port = base_url.removeprefix("http://").removeprefix("https://")
+            host, _, port_text = host_port.partition(":")
+            port = int(port_text or "20128")
+            try:
+                pid, log_file = start_daemon(host=host or "127.0.0.1", port=port)
+            except RuntimeError as exc:
+                print(f"error: {exc}")
+            else:
+                print(f"started: pid {pid}")
+                print(f"log: {log_file}")
+        elif choice == "4" or choice.lower() in {"q", "quit", "exit"}:
+            return 0
+        else:
+            print("unknown choice")
+
+
+def _handle_daemon(args) -> int:
+    if args.daemon_command is None:
+        print("usage: lr daemon {start,stop,status} ...")
+        return 0
+    if args.daemon_command == "start":
+        try:
+            pid, log_file = start_daemon(
+                host=args.host,
+                port=args.port,
+                timeout_seconds=args.timeout,
+                dry_run=args.dry_run,
+            )
+        except RuntimeError as exc:
+            print(f"error: {exc}")
+            return 2
+        print("status: started")
+        print(f"pid: {pid}")
+        print(f"url: http://{args.host}:{args.port}")
+        print(f"log_file: {log_file}")
+        return 0
+    if args.daemon_command == "stop":
+        pid = stop_daemon()
+        if pid is None:
+            print("status: stopped")
+            print("pid: -")
+        else:
+            print("status: stopped")
+            print(f"pid: {pid}")
+        return 0
+    if args.daemon_command == "status":
+        print(render_daemon_status(base_url=args.base_url))
+        return 0
+    return 2
 
 
 def _add_execution_options(parser: argparse.ArgumentParser) -> None:

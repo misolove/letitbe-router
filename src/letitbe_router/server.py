@@ -14,7 +14,8 @@ from letitbe_router.config import ConfigError, load_config
 from letitbe_router.executor import Executor, build_command
 from letitbe_router.router import LetitbeRouter
 
-DEFAULT_MODEL = "letitbe-router"
+DEFAULT_MODEL = "lr"
+AUTO_MODELS = {"lr", "lr/auto", "letitbe-router", "letitbe-router/auto"}
 
 
 class LetitbeOpenAIHandler(BaseHTTPRequestHandler):
@@ -38,7 +39,13 @@ class LetitbeOpenAIHandler(BaseHTTPRequestHandler):
                 self._send_error(HTTPStatus.BAD_REQUEST, "config_error", str(exc))
                 return
             models = [
-                {"id": DEFAULT_MODEL, "object": "model", "owned_by": "letitbe-router"},
+                {"id": "lr", "object": "model", "owned_by": "letitbe-router"},
+                {"id": "lr/auto", "object": "model", "owned_by": "letitbe-router"},
+                {"id": "letitbe-router", "object": "model", "owned_by": "letitbe-router"},
+                *[
+                    {"id": f"lr/{name}", "object": "model", "owned_by": "letitbe-router"}
+                    for name in sorted(agents)
+                ],
                 *[
                     {"id": f"agent/{name}", "object": "model", "owned_by": "letitbe-router"}
                     for name in sorted(agents)
@@ -218,14 +225,19 @@ def _available_agents() -> dict[str, CliAgent]:
 def _select_agent(
     model: str, prompt: str, agents: dict[str, CliAgent]
 ) -> tuple[CliAgent, str | None, str]:
+    if model.startswith("lr/") and model not in AUTO_MODELS:
+        name = model.removeprefix("lr/")
+        if name not in agents:
+            raise LookupError(f"unknown or disabled agent: {name}")
+        return agents[name], "direct", model
     if model.startswith("agent/"):
         name = model.removeprefix("agent/")
         if name not in agents:
             raise LookupError(f"unknown or disabled agent: {name}")
         return agents[name], "direct", model
     if model in agents:
-        return agents[model], "direct", f"agent/{model}"
-    if model != DEFAULT_MODEL:
+        return agents[model], "direct", f"lr/{model}"
+    if model not in AUTO_MODELS:
         raise LookupError(f"unknown model: {model}")
 
     decision = LetitbeRouter.default().route(prompt)

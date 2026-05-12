@@ -71,6 +71,72 @@ def test_openai_chat_completions_executes_configured_agent(tmp_path, monkeypatch
     assert body["lr"]["returncode"] == 0
 
 
+def test_openai_models_exposes_lr_prefixed_names(tmp_path, monkeypatch):
+    config_path = tmp_path / "router.json"
+    config_path.write_text(
+        """
+{
+  "agents": {
+    "test-echo": {
+      "enabled": true,
+      "command": ["python", "-c", "print('ok')", "{prompt}"],
+      "description": "enabled"
+    }
+  }
+}
+""".strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("LETITBE_ROUTER_CONFIG", str(config_path))
+    server, base_url = _serve(make_handler(timeout_seconds=5))
+    try:
+        status, body = _get_json(f"{base_url}/v1/models")
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    model_ids = {item["id"] for item in body["data"]}
+    assert status == 200
+    assert "lr" in model_ids
+    assert "lr/auto" in model_ids
+    assert "lr/test-echo" in model_ids
+    assert "letitbe-router" in model_ids
+    assert "agent/test-echo" in model_ids
+
+
+def test_openai_chat_completions_accepts_lr_agent_model(tmp_path, monkeypatch):
+    config_path = tmp_path / "router.json"
+    config_path.write_text(
+        """
+{
+  "agents": {
+    "test-echo": {
+      "enabled": true,
+      "command": ["python", "-c", "import sys; print('LR:' + sys.argv[1])", "{prompt}"],
+      "description": "test echo"
+    }
+  }
+}
+""".strip(),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("LETITBE_ROUTER_CONFIG", str(config_path))
+    server, base_url = _serve(make_handler(timeout_seconds=5))
+    try:
+        status, body = _post_json(
+            f"{base_url}/v1/chat/completions",
+            {"model": "lr/test-echo", "messages": [{"role": "user", "content": "hello"}]},
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+
+    assert status == 200
+    assert body["model"] == "lr/test-echo"
+    assert body["choices"][0]["message"]["content"].strip() == "LR:hello"
+    assert body["lr"]["route"] == "direct"
+
+
 def test_openai_models_lists_enabled_agents(tmp_path, monkeypatch):
     config_path = tmp_path / "router.json"
     config_path.write_text(

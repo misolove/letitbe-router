@@ -129,15 +129,19 @@ The JSON config can enable or adjust agent templates for `hermes-agent`, `openco
 `lr serve` exposes a minimal OpenAI-compatible API surface for tools that can point at a custom base URL:
 
 ```bash
+lr tui --once
 lr serve --host 127.0.0.1 --port 20128 --timeout 120
+lr daemon start --host 127.0.0.1 --port 20128 --dry-run
+lr daemon status
+lr daemon stop
 lr status --base-url http://127.0.0.1:20128
 curl http://127.0.0.1:20128/v1/models
 curl http://127.0.0.1:20128/v1/chat/completions \
   -H 'Content-Type: application/json' \
-  -d '{"model":"agent/claude-code","messages":[{"role":"user","content":"Reply exactly: LTR_OK"}]}'
+  -d '{"model":"lr/claude-code","messages":[{"role":"user","content":"Reply exactly: LTR_OK"}]}'
 ```
 
-Supported now: `GET /health`, `GET /v1/models`, and non-streaming `POST /v1/chat/completions`. `stream=true` is intentionally rejected until streaming is implemented.
+Prefer `lr` or `lr/auto` for routed execution and `lr/<agent>` for direct adapter selection. Backward-compatible aliases (`letitbe-router`, `agent/<agent>`) are still accepted. Supported now: `GET /health`, `GET /v1/models`, and non-streaming `POST /v1/chat/completions`. `stream=true` is intentionally rejected until streaming is implemented.
 
 ## License
 
