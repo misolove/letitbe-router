@@ -7,7 +7,15 @@ import os
 import shlex
 
 from letitbe_router import __version__
-from letitbe_router.agents import DEFAULT_AGENTS, CliAgent
+from letitbe_router.adapters import list_adapters, render_adapter
+from letitbe_router.agents import DEFAULT_AGENTS, CliAgent, agents_from_config
+from letitbe_router.config import (
+    ConfigError,
+    config_path,
+    load_config,
+    sample_config_json,
+    write_sample_config,
+)
 from letitbe_router.executor import Executor, build_command
 from letitbe_router.router import LetitbeRouter
 
@@ -27,7 +35,6 @@ def _positive_int(value: str) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    agents = _available_agents()
     parser = argparse.ArgumentParser(prog="lr", description="Letitbe Router CLI")
     parser.add_argument("--version", action="store_true", help="show package version")
     subparsers = parser.add_subparsers(dest="command")
@@ -39,12 +46,10 @@ def main(argv: list[str] | None = None) -> int:
     run_parser.add_argument("text", nargs="+", help="text to route and execute")
     run_parser.add_argument(
         "--agent",
-        choices=sorted(agents),
         help="override the routed agent",
     )
     run_parser.add_argument(
         "--fallback-agent",
-        choices=sorted(agents),
         help="agent to use when no semantic route matches",
     )
     _add_execution_options(run_parser)
@@ -53,12 +58,27 @@ def main(argv: list[str] | None = None) -> int:
     chat_parser.add_argument("text", nargs="+", help="chat text to execute")
     chat_parser.add_argument(
         "--agent",
-        choices=sorted(agents),
         help=f"chat agent override (default: {DEFAULT_CHAT_AGENT})",
     )
     _add_execution_options(chat_parser)
 
     subparsers.add_parser("smoke", help="run deterministic offline routing smoke test")
+
+    config_parser = subparsers.add_parser("config", help="inspect letitbe-router config")
+    config_subparsers = config_parser.add_subparsers(dest="config_command")
+    config_subparsers.add_parser("path", help="print config path")
+    config_subparsers.add_parser("sample", help="print sample config JSON")
+    config_subparsers.add_parser("show", help="print effective config JSON")
+    config_init = config_subparsers.add_parser("init", help="write sample config JSON")
+    config_init.add_argument("--force", action="store_true", help="overwrite existing config")
+
+    adapter_parser = subparsers.add_parser("adapter", help="render dry-run integration snippets")
+    adapter_subparsers = adapter_parser.add_subparsers(dest="adapter_command")
+    adapter_subparsers.add_parser("list", help="list known adapter targets")
+    adapter_render = adapter_subparsers.add_parser(
+        "render", help="render a dry-run adapter snippet"
+    )
+    adapter_render.add_argument("target", help="adapter target name")
 
     args = parser.parse_args(argv)
     if args.version:
@@ -69,10 +89,26 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return 0
 
+    if args.command == "config":
+        return _handle_config(args, parser)
+
+    if args.command == "adapter":
+        return _handle_adapter(args, parser)
+
+    try:
+        agents = _available_agents()
+    except ConfigError as exc:
+        print(f"config error: {exc}")
+        return 2
+
     if args.command == "chat":
         text = " ".join(args.text)
         agent_name = args.agent or _default_chat_agent(agents)
-        agent = agents[agent_name]
+        agent = _resolve_agent(agents, agent_name)
+        if agent is None:
+            print(f"error: unknown or disabled agent: {agent_name}")
+            print(f"available: {', '.join(sorted(agents)) or '-'}")
+            return 2
         return _execute_agent(
             text=text,
             route_label="chat",
@@ -108,7 +144,15 @@ def main(argv: list[str] | None = None) -> int:
             print("error: no routed agent; pass --agent or --fallback-agent to override")
             return 2
 
-        agent = agents[agent_name]
+        agent = _resolve_agent(agents, agent_name)
+        if agent is None:
+            print(f"text: {text}")
+            print(f"route: {route_label}")
+            print(f"agent: {agent_name}")
+            print("returncode: 2")
+            print(f"error: unknown or disabled agent: {agent_name}")
+            print(f"available: {', '.join(sorted(agents)) or '-'}")
+            return 2
         return _execute_agent(
             text=text,
             route_label=route_label,
@@ -129,6 +173,55 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _handle_config(args, parser: argparse.ArgumentParser) -> int:
+    if args.config_command is None:
+        parser.parse_args(["config", "--help"])
+        return 0
+    if args.config_command == "path":
+        print(config_path())
+        return 0
+    if args.config_command == "sample":
+        print(sample_config_json(), end="")
+        return 0
+    if args.config_command == "show":
+        import json
+
+        try:
+            effective_config = load_config()
+        except ConfigError as exc:
+            print(f"config error: {exc}")
+            return 2
+        print(json.dumps(effective_config.to_dict(), ensure_ascii=False, indent=2))
+        return 0
+    if args.config_command == "init":
+        try:
+            written = write_sample_config(force=args.force)
+        except FileExistsError as exc:
+            print(f"error: config already exists: {exc.filename}; pass --force to overwrite")
+            return 2
+        print(f"wrote: {written}")
+        return 0
+    return 2
+
+
+def _handle_adapter(args, parser: argparse.ArgumentParser) -> int:
+    if args.adapter_command is None:
+        parser.parse_args(["adapter", "--help"])
+        return 0
+    if args.adapter_command == "list":
+        for adapter in list_adapters():
+            print(f"{adapter.target}: {adapter.description}")
+        return 0
+    if args.adapter_command == "render":
+        try:
+            print(render_adapter(args.target), end="")
+        except KeyError as exc:
+            print(f"error: {exc}")
+            return 2
+        return 0
+    return 2
+
+
 def _add_execution_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--dry-run",
@@ -144,7 +237,9 @@ def _add_execution_options(parser: argparse.ArgumentParser) -> None:
 
 
 def _available_agents() -> dict[str, CliAgent]:
-    agents = dict(DEFAULT_AGENTS)
+    agents = agents_from_config(load_config())
+    if not agents:
+        agents = dict(DEFAULT_AGENTS)
     if os.environ.get("LETITBE_ROUTER_ENABLE_TEST_AGENT") == "1":
         agents["test-echo"] = CliAgent(
             name="test-echo",
@@ -155,10 +250,18 @@ def _available_agents() -> dict[str, CliAgent]:
 
 
 def _default_chat_agent(agents: dict[str, CliAgent]) -> str:
-    configured = os.environ.get("LETITBE_ROUTER_DEFAULT_CHAT_AGENT", DEFAULT_CHAT_AGENT)
+    configured = os.environ.get("LETITBE_ROUTER_DEFAULT_CHAT_AGENT") or load_config().defaults.get(
+        "chat_agent", DEFAULT_CHAT_AGENT
+    )
     if configured not in agents:
         return DEFAULT_CHAT_AGENT
     return configured
+
+
+def _resolve_agent(agents: dict[str, CliAgent], name: str | None) -> CliAgent | None:
+    if name is None:
+        return None
+    return agents.get(name)
 
 
 def _first_candidate(decision) -> str | None:

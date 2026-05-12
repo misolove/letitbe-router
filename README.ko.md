@@ -267,6 +267,18 @@ lr run "hi" --fallback-agent claude-code --timeout 120
 lr run "fix pytest and update code" --dry-run
 ```
 
+외부 도구 설정은 지금 자동 변경하지 않고, config-first 스캐폴드만 제공합니다.
+
+```bash
+lr config path
+lr config sample
+lr config init
+lr adapter list
+lr adapter render hermes
+```
+
+JSON config에서 `hermes-agent`, `opencode`, `openclaw`, `codex-cli`, `claude-code`, `gemini-cli` agent template을 켜거나 수정할 수 있습니다. 비활성 template은 나중에 필요할 때 opt-in하기 위한 자리만 만들어둔 것이며, `lr adapter render ...`는 dry-run snippet만 출력합니다.
+
 ## 라이선스
 
 MIT. 자세한 내용은 [LICENSE](LICENSE)를 참고하세요.

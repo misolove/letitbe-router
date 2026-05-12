@@ -24,7 +24,7 @@ class ExecutionResult:
 def build_command(command_template: tuple[str, ...] | list[str], prompt: str) -> list[str]:
     """Substitute prompt into a command template without invoking a shell."""
 
-    return [part.format(prompt=prompt) for part in command_template]
+    return [part.replace("{prompt}", prompt) for part in command_template]
 
 
 class Executor:

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from letitbe_router.config import RouterConfig
+
 
 @dataclass(frozen=True)
 class CliAgent:
@@ -14,35 +16,14 @@ class CliAgent:
     description: str
 
 
-DEFAULT_AGENTS: dict[str, CliAgent] = {
-    "codex-cli": CliAgent(
-        name="codex-cli",
-        command=(
-            "codex",
-            "exec",
-            "--sandbox",
-            "read-only",
-            "--skip-git-repo-check",
-            "{prompt}",
-        ),
-        description="OpenAI Codex CLI in non-interactive read-only exec mode.",
-    ),
-    "gemini-cli": CliAgent(
-        name="gemini-cli",
-        command=("gemini", "--prompt", "{prompt}", "--approval-mode", "plan"),
-        description="Gemini CLI in headless plan/read-only mode.",
-    ),
-    "claude-code": CliAgent(
-        name="claude-code",
-        command=(
-            "claude",
-            "--print",
-            "{prompt}",
-            "--permission-mode",
-            "plan",
-            "--max-turns",
-            "3",
-        ),
-        description="Claude Code CLI in print mode with plan permissions.",
-    ),
-}
+def agents_from_config(config: RouterConfig) -> dict[str, CliAgent]:
+    """Return enabled CLI agents from router config."""
+
+    return {
+        name: CliAgent(name=name, command=agent.command, description=agent.description)
+        for name, agent in config.agents.items()
+        if agent.enabled
+    }
+
+
+DEFAULT_AGENTS: dict[str, CliAgent] = agents_from_config(RouterConfig.sample())

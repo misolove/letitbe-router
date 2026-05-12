@@ -114,6 +114,18 @@ Use `--dry-run` to inspect the selected command before execution.
 lr run "fix pytest and update code" --dry-run
 ```
 
+Configuration-first integration scaffolds are available without mutating external tools:
+
+```bash
+lr config path
+lr config sample
+lr config init
+lr adapter list
+lr adapter render hermes
+```
+
+The JSON config can enable or adjust agent templates for `hermes-agent`, `opencode`, `openclaw`, `codex-cli`, `claude-code`, and `gemini-cli`. Disabled templates are included for future opt-in integration; `lr adapter render ...` prints dry-run snippets only.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

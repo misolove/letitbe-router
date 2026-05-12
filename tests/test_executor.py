@@ -3,9 +3,15 @@ from letitbe_router.executor import Executor, build_command
 
 
 def test_build_command_substitutes_prompt_without_shell():
-    command = build_command(["python", "-c", "print({prompt!r})"], "hello; rm -rf /")
+    command = build_command(["python", "-c", "print('{prompt}')"], "hello; rm -rf /")
 
     assert command == ["python", "-c", "print('hello; rm -rf /')"]
+
+
+def test_build_command_treats_unknown_braces_as_literal_text():
+    command = build_command(("runner", "literal {not_prompt}", "{prompt}"), "hello")
+
+    assert command == ["runner", "literal {not_prompt}", "hello"]
 
 
 def test_executor_runs_selected_agent_command():
