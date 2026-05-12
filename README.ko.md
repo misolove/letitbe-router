@@ -252,7 +252,7 @@ lr run "Reply exactly: LTR_OK" --agent claude-code --timeout 120
 
 - `codex-cli`: `codex exec --sandbox read-only --skip-git-repo-check ...`
 - `gemini-cli`: `gemini --prompt ... --approval-mode plan`
-- `claude-code`: `claude --print ... --permission-mode plan --max-turns 1`
+- `claude-code`: `claude --print ... --permission-mode plan --max-turns 3`
 
 실행 전에는 `--dry-run`으로 실제 명령을 먼저 확인할 수 있습니다.
 

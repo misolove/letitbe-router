@@ -45,7 +45,9 @@ class LocalHashDenseEncoder(DenseEncoder):
     def __call__(self, docs: list[Any]) -> list[list[float]]:
         vectors: list[list[float]] = []
         for doc in docs:
-            tokens = re.findall(r"[a-z0-9_+#.-]+", str(doc).lower())
+            tokens = re.findall(r"[\w+#.-]+", str(doc).lower(), flags=re.UNICODE)
+            if not tokens:
+                tokens = ["__empty__"]
             vec = np.zeros(self.dims, dtype=np.float32)
             for token in tokens:
                 idx = _bucket(token, self.dims)

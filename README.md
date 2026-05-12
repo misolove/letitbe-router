@@ -85,7 +85,7 @@ lr run "Reply exactly: LTR_OK" --agent claude-code --timeout 120
 
 - `codex-cli`: `codex exec --sandbox read-only --skip-git-repo-check ...`
 - `gemini-cli`: `gemini --prompt ... --approval-mode plan`
-- `claude-code`: `claude --print ... --permission-mode plan --max-turns 1`
+- `claude-code`: `claude --print ... --permission-mode plan --max-turns 3`
 
 Use `--dry-run` to inspect the selected command before execution.
 

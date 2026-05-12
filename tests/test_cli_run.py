@@ -62,6 +62,32 @@ def test_cli_run_rejects_non_positive_timeout():
     assert "positive integer" in result.stderr
 
 
+def test_cli_run_non_ascii_no_route_does_not_emit_runtime_warning():
+    env = os.environ.copy()
+    env["LETITBE_ROUTER_ENABLE_TEST_AGENT"] = "1"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "letitbe_router.cli",
+            "run",
+            "안녕",
+            "--agent",
+            "test-echo",
+            "--timeout",
+            "5",
+        ],
+        text=True,
+        capture_output=True,
+        check=True,
+        env=env,
+    )
+
+    assert "RuntimeWarning" not in result.stderr
+    assert "invalid value encountered" not in result.stderr
+    assert "안녕" in result.stdout
+
+
 def test_cli_run_can_override_agent_with_test_echo():
     env = os.environ.copy()
     env["LETITBE_ROUTER_ENABLE_TEST_AGENT"] = "1"

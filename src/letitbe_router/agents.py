@@ -41,7 +41,7 @@ DEFAULT_AGENTS: dict[str, CliAgent] = {
             "--permission-mode",
             "plan",
             "--max-turns",
-            "1",
+            "3",
         ),
         description="Claude Code CLI in print mode with plan permissions.",
     ),
