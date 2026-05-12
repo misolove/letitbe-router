@@ -66,6 +66,24 @@ lr run "compare these docs and summarize the tradeoffs"
 - Gemini CLI
 - Claude Code CLI
 
+## Current status
+
+Design-first MVP. The repository now includes the first offline v0.1 router scaffold:
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/python -m letitbe_router.cli smoke
+.venv/bin/python -m letitbe_router.cli route "fix pytest and update code"
+```
+
+The packaged CLI entrypoint is planned as `lr` after editable install:
+
+```bash
+lr smoke
+lr route "review this architecture for risks"
+```
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

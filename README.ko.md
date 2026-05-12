@@ -221,7 +221,21 @@ lr run "compare these docs and summarize tradeoffs"
 
 ## 현재 상태
 
-Design-first MVP입니다. 아직 실행 코드보다 architecture, MVP 범위, usage model을 먼저 고정하는 단계입니다.
+Design-first MVP입니다. architecture, MVP 범위, usage model을 먼저 고정했고, 현재는 첫 번째 offline v0.1 라우터 스캐폴드가 들어간 상태입니다.
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/python -m letitbe_router.cli smoke
+.venv/bin/python -m letitbe_router.cli route "fix pytest and update code"
+```
+
+editable install 후에는 `lr` 명령을 목표로 합니다.
+
+```bash
+lr smoke
+lr route "review this architecture for risks"
+```
 
 ## 라이선스
 

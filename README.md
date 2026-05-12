@@ -54,4 +54,18 @@ It is designed to route work across Codex CLI, Gemini CLI, and Claude Code CLI w
 
 ## Current status
 
-Design-first MVP. The repository currently defines the architecture and implementation scope before code is added.
+Design-first MVP. The repository now includes the first offline v0.1 router scaffold:
+
+```bash
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -e ".[dev]"
+.venv/bin/python -m letitbe_router.cli smoke
+.venv/bin/python -m letitbe_router.cli route "fix pytest and update code"
+```
+
+The packaged CLI entrypoint is planned as `lr` after editable install:
+
+```bash
+lr smoke
+lr route "review this architecture for risks"
+```
