@@ -79,9 +79,16 @@ chmod +x ~/.local/bin/lr
 lr smoke
 lr route "review this architecture for risks"
 lr run "Reply exactly: LTR_OK" --agent claude-code --timeout 120
+lr chat "안녕" --agent claude-code --timeout 120
 ```
 
-`lr run` executes the selected CLI agent in a conservative non-interactive mode:
+Use `lr run` for task routing and `lr chat` for general prompts. If routing returns no match, `lr run` can opt into a safe fallback:
+
+```bash
+lr run "hi" --fallback-agent claude-code --timeout 120
+```
+
+`lr run` and `lr chat` execute the selected CLI agent in a conservative non-interactive mode:
 
 - `codex-cli`: `codex exec --sandbox read-only --skip-git-repo-check ...`
 - `gemini-cli`: `gemini --prompt ... --approval-mode plan`

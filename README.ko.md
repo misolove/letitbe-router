@@ -246,9 +246,16 @@ chmod +x ~/.local/bin/lr
 lr smoke
 lr route "review this architecture for risks"
 lr run "Reply exactly: LTR_OK" --agent claude-code --timeout 120
+lr chat "안녕" --agent claude-code --timeout 120
 ```
 
-`lr run`은 선택된 CLI agent를 보수적인 non-interactive 모드로 실행합니다.
+작업 라우팅은 `lr run`, 일반 대화성 프롬프트는 `lr chat`을 사용합니다. route가 잡히지 않는 입력은 명시적으로 fallback agent를 줄 수 있습니다.
+
+```bash
+lr run "hi" --fallback-agent claude-code --timeout 120
+```
+
+`lr run`과 `lr chat`은 선택된 CLI agent를 보수적인 non-interactive 모드로 실행합니다.
 
 - `codex-cli`: `codex exec --sandbox read-only --skip-git-repo-check ...`
 - `gemini-cli`: `gemini --prompt ... --approval-mode plan`

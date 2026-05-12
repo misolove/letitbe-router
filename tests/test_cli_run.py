@@ -42,6 +42,33 @@ def test_cli_run_no_route_without_agent_exits_cleanly():
     assert "no routed agent" in result.stdout
 
 
+def test_cli_run_no_route_can_use_fallback_agent():
+    env = os.environ.copy()
+    env["LETITBE_ROUTER_ENABLE_TEST_AGENT"] = "1"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "letitbe_router.cli",
+            "run",
+            "hi",
+            "--fallback-agent",
+            "test-echo",
+            "--timeout",
+            "5",
+        ],
+        text=True,
+        capture_output=True,
+        check=True,
+        env=env,
+    )
+
+    assert "route: fallback" in result.stdout
+    assert "agent: test-echo" in result.stdout
+    assert "reason: no route matched; using fallback agent" in result.stdout
+    assert "hi" in result.stdout
+
+
 def test_cli_run_rejects_non_positive_timeout():
     result = subprocess.run(
         [

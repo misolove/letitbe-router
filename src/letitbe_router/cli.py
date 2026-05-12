@@ -16,6 +16,7 @@ SMOKE_CASES = (
     "compare semantic-router docs with other model routers",
     "review this plan and identify architectural risks",
 )
+DEFAULT_CHAT_AGENT = "claude-code"
 
 
 def _positive_int(value: str) -> int:
@@ -42,16 +43,20 @@ def main(argv: list[str] | None = None) -> int:
         help="override the routed agent",
     )
     run_parser.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="print the selected command without executing it",
+        "--fallback-agent",
+        choices=sorted(agents),
+        help="agent to use when no semantic route matches",
     )
-    run_parser.add_argument(
-        "--timeout",
-        type=_positive_int,
-        default=120,
-        help="execution timeout in seconds",
+    _add_execution_options(run_parser)
+
+    chat_parser = subparsers.add_parser("chat", help="execute a general chat prompt")
+    chat_parser.add_argument("text", nargs="+", help="chat text to execute")
+    chat_parser.add_argument(
+        "--agent",
+        choices=sorted(agents),
+        help=f"chat agent override (default: {DEFAULT_CHAT_AGENT})",
     )
+    _add_execution_options(chat_parser)
 
     subparsers.add_parser("smoke", help="run deterministic offline routing smoke test")
 
@@ -63,6 +68,19 @@ def main(argv: list[str] | None = None) -> int:
     if args.command is None:
         parser.print_help()
         return 0
+
+    if args.command == "chat":
+        text = " ".join(args.text)
+        agent_name = args.agent or _default_chat_agent(agents)
+        agent = agents[agent_name]
+        return _execute_agent(
+            text=text,
+            route_label="chat",
+            agent=agent,
+            timeout=args.timeout,
+            dry_run=args.dry_run,
+            mode="chat",
+        )
 
     router = LetitbeRouter.default()
 
@@ -76,34 +94,29 @@ def main(argv: list[str] | None = None) -> int:
         text = " ".join(args.text)
         decision = router.route(text)
         agent_name = args.agent or _first_candidate(decision)
+        route_label = decision.route
+        reason = None
+        if agent_name is None and args.fallback_agent:
+            agent_name = args.fallback_agent
+            route_label = "fallback"
+            reason = "no route matched; using fallback agent"
         if agent_name is None:
             print(f"text: {text}")
             print(f"route: {decision.route}")
             print("agent: -")
             print("returncode: 2")
-            print("error: no routed agent; pass --agent to override")
+            print("error: no routed agent; pass --agent or --fallback-agent to override")
             return 2
 
         agent = agents[agent_name]
-        command = build_command(agent.command, text)
-        print(f"text: {text}")
-        print(f"route: {decision.route}")
-        print(f"agent: {agent.name}")
-        print(f"command: {shlex.join(command)}")
-        if args.dry_run:
-            print("dry_run: true")
-            return 0
-
-        result = Executor(timeout_seconds=args.timeout).run(agent, text)
-        print(f"returncode: {result.returncode}")
-        print(f"timed_out: {str(result.timed_out).lower()}")
-        if result.stdout:
-            print("--- stdout ---")
-            print(result.stdout.rstrip())
-        if result.stderr:
-            print("--- stderr ---")
-            print(result.stderr.rstrip())
-        return result.returncode
+        return _execute_agent(
+            text=text,
+            route_label=route_label,
+            agent=agent,
+            timeout=args.timeout,
+            dry_run=args.dry_run,
+            reason=reason,
+        )
 
     if args.command == "smoke":
         for text in SMOKE_CASES:
@@ -114,6 +127,20 @@ def main(argv: list[str] | None = None) -> int:
 
     parser.print_help()
     return 0
+
+
+def _add_execution_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="print the selected command without executing it",
+    )
+    parser.add_argument(
+        "--timeout",
+        type=_positive_int,
+        default=120,
+        help="execution timeout in seconds",
+    )
 
 
 def _available_agents() -> dict[str, CliAgent]:
@@ -127,8 +154,50 @@ def _available_agents() -> dict[str, CliAgent]:
     return agents
 
 
+def _default_chat_agent(agents: dict[str, CliAgent]) -> str:
+    configured = os.environ.get("LETITBE_ROUTER_DEFAULT_CHAT_AGENT", DEFAULT_CHAT_AGENT)
+    if configured not in agents:
+        return DEFAULT_CHAT_AGENT
+    return configured
+
+
 def _first_candidate(decision) -> str | None:
     return decision.candidates[0] if decision.candidates else None
+
+
+def _execute_agent(
+    *,
+    text: str,
+    route_label: str | None,
+    agent: CliAgent,
+    timeout: int,
+    dry_run: bool,
+    mode: str | None = None,
+    reason: str | None = None,
+) -> int:
+    command = build_command(agent.command, text)
+    if mode:
+        print(f"mode: {mode}")
+    print(f"text: {text}")
+    print(f"route: {route_label}")
+    print(f"agent: {agent.name}")
+    if reason:
+        print(f"reason: {reason}")
+    print(f"command: {shlex.join(command)}")
+    if dry_run:
+        print("dry_run: true")
+        return 0
+
+    result = Executor(timeout_seconds=timeout).run(agent, text)
+    print(f"returncode: {result.returncode}")
+    print(f"timed_out: {str(result.timed_out).lower()}")
+    if result.stdout:
+        print("--- stdout ---")
+        print(result.stdout.rstrip())
+    if result.stderr:
+        print("--- stderr ---")
+        print(result.stderr.rstrip())
+    return result.returncode
 
 
 def _print_decision(decision):
