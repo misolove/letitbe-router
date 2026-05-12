@@ -230,7 +230,17 @@ python3.12 -m venv .venv
 .venv/bin/python -m letitbe_router.cli route "fix pytest and update code"
 ```
 
-editable install 후에는 `lr` 명령을 목표로 합니다.
+editable install 후에는 `lr` 명령을 사용할 수 있습니다. 로컬 어디서나 쓰려면 현재 권장 설치 방식은 전용 venv + `~/.local/bin/lr` wrapper입니다.
+
+```bash
+python3.12 -m venv ~/.local/share/letitbe-router-venv
+~/.local/share/letitbe-router-venv/bin/python -m pip install -U git+https://github.com/misolove/letitbe-router.git
+cat > ~/.local/bin/lr <<'SH'
+#!/usr/bin/env sh
+exec "$HOME/.local/share/letitbe-router-venv/bin/lr" "$@"
+SH
+chmod +x ~/.local/bin/lr
+```
 
 ```bash
 lr smoke

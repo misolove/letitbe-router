@@ -63,7 +63,17 @@ python3.12 -m venv .venv
 .venv/bin/python -m letitbe_router.cli route "fix pytest and update code"
 ```
 
-The packaged CLI entrypoint is planned as `lr` after editable install:
+The packaged CLI entrypoint is available as `lr` after editable install. For machine-wide local use, the current recommended setup is a dedicated venv plus a `~/.local/bin/lr` wrapper.
+
+```bash
+python3.12 -m venv ~/.local/share/letitbe-router-venv
+~/.local/share/letitbe-router-venv/bin/python -m pip install -U git+https://github.com/misolove/letitbe-router.git
+cat > ~/.local/bin/lr <<'SH'
+#!/usr/bin/env sh
+exec "$HOME/.local/share/letitbe-router-venv/bin/lr" "$@"
+SH
+chmod +x ~/.local/bin/lr
+```
 
 ```bash
 lr smoke
