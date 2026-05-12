@@ -235,6 +235,19 @@ editable install 후에는 `lr` 명령을 목표로 합니다.
 ```bash
 lr smoke
 lr route "review this architecture for risks"
+lr run "Reply exactly: LTR_OK" --agent claude-code --timeout 120
+```
+
+`lr run`은 선택된 CLI agent를 보수적인 non-interactive 모드로 실행합니다.
+
+- `codex-cli`: `codex exec --sandbox read-only --skip-git-repo-check ...`
+- `gemini-cli`: `gemini --prompt ... --approval-mode plan`
+- `claude-code`: `claude --print ... --permission-mode plan --max-turns 1`
+
+실행 전에는 `--dry-run`으로 실제 명령을 먼저 확인할 수 있습니다.
+
+```bash
+lr run "fix pytest and update code" --dry-run
 ```
 
 ## 라이선스

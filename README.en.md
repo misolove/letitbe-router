@@ -82,6 +82,19 @@ The packaged CLI entrypoint is planned as `lr` after editable install:
 ```bash
 lr smoke
 lr route "review this architecture for risks"
+lr run "Reply exactly: LTR_OK" --agent claude-code --timeout 120
+```
+
+`lr run` executes the selected CLI agent in a conservative non-interactive mode:
+
+- `codex-cli`: `codex exec --sandbox read-only --skip-git-repo-check ...`
+- `gemini-cli`: `gemini --prompt ... --approval-mode plan`
+- `claude-code`: `claude --print ... --permission-mode plan --max-turns 1`
+
+Use `--dry-run` to inspect the selected command before execution.
+
+```bash
+lr run "fix pytest and update code" --dry-run
 ```
 
 ## License
